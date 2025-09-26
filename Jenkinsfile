@@ -15,35 +15,33 @@ pipeline {
     }
 
     stages {
-        stage('Set Image Tag') {
+        stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX: Handle missing GIT_COMMIT when running outside of SCM context
+                    // This is the CRITICAL, SECOND checkout. 
+                    // It clones the application code into the workspace.
+                    checkout([
+                        $class: 'GitSCM', 
+                        branches: [[name: '*/main']], 
+                        doGenerateSubmoduleConfigurations: false, 
+                        extensions: [], 
+                        // ** Use your working 'Username with password' credential here **
+                        userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
+                    ])
+                    
+                    // After the application code is cloned, we can safely set the tag
                     if (env.GIT_COMMIT == null) {
-                        env.GIT_COMMIT = "NOCOMMIT" 
+                        // The application code's commit hash is now available
+                        env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
                     }
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
+                    echo "Building image with tag: ${env.IMAGE_TAG}"
                 }
-            }
-        }
-
-        stage('Checkout Code') {
-            steps {
-                // ✅ FINAL FIX: Using the ID for the "Username with password" credential
-                // This correctly passes your GitHub username (as username) and the PAT (as password).
-                checkout([
-                    $class: 'GitSCM', 
-                    branches: [[name: '*/main']], 
-                    doGenerateSubmoduleConfigurations: false, 
-                    extensions: [], 
-                    userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
-                ])
             }
         }
         
         stage('Build and Push Image') { 
             steps {
-                // FIX: Explicitly use the 'kaniko' container
                 container('kaniko') {
                     sh """
                         /kaniko/executor \\
@@ -60,7 +58,6 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                // FIX: Explicitly use the 'kubectl' container
                 container('kubectl') {
                     sh """
                         # 1. Inject built image with tag into deployment before applying
@@ -76,7 +73,6 @@ pipeline {
                         kubectl apply -f k8s/todoapp-service.yaml -n ${NAMESPACE}
                         kubectl apply -f k8s/todoapp-servicemonitor.yaml -n ${NAMESPACE}
 
-                        // Wait for rollout to finish before prompting for manual input
                         echo "Waiting for deployment rollout to complete before proceeding to manual check..."
                         kubectl rollout status deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}
                     """
@@ -115,7 +111,6 @@ pipeline {
     post {
         failure {
             echo 'Deployment failed (User Veto). Initiating automatic rollback.'
-            // FIX: Explicitly use the 'kubectl' container
             container('kubectl') {
                 sh "kubectl rollout undo deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}"
             }
