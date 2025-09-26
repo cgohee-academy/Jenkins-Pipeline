@@ -44,7 +44,7 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // FIX: Cleaned up the shell command. Dockerfile path is in the root.
+                    // FIX: This section must be perfectly clean of trailing whitespace.
                     sh """
                         /kaniko/executor \\
                           --dockerfile=Dockerfile \\ 
