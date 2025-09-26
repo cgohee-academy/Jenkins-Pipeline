@@ -6,9 +6,12 @@ pipeline {
     }
 
     environment {
+        // Docker registry settings
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_USERNAME = 'rcanonigo'
         APP_NAME = 'todo-webapp-observability'
+        
+        // Kubernetes deployment settings
         NAMESPACE = 'todo-app'
         MONITORING_NAMESPACE = 'monitoring'
         DEPLOYMENT_NAME = 'todoapp' 
@@ -18,20 +21,17 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // This is the CRITICAL, SECOND checkout. 
-                    // It clones the application code into the workspace.
+                    // CRITICAL: Clone the application code repository (i9b-observability)
                     checkout([
                         $class: 'GitSCM', 
                         branches: [[name: '*/main']], 
                         doGenerateSubmoduleConfigurations: false, 
                         extensions: [], 
-                        // ** Use your working 'Username with password' credential here **
                         userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
                     ])
                     
-                    // After the application code is cloned, we can safely set the tag
+                    // Set the image tag using the application code's commit hash
                     if (env.GIT_COMMIT == null) {
-                        // The application code's commit hash is now available
                         env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
                     }
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
@@ -43,9 +43,10 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
+                    // FIX: Dockerfile path set to the root directory
                     sh """
                         /kaniko/executor \\
-                          --dockerfile=Dockerfile \\
+                          --dockerfile=Dockerfile \\ 
                           --context=. \\
                           --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} \\
                           --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest \\
@@ -63,7 +64,7 @@ pipeline {
                         # 1. Inject built image with tag into deployment before applying
                         sed -i "s|image: todoapp:latest|image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG}|g" k8s/todoapp-deployment.yaml
 
-                        # 2. Apply all manifests
+                        # 2. Apply all manifests (Ensure these files are in your cloned workspace)
                         kubectl apply -f k8s/todoapp-alerts.yaml -n ${MONITORING_NAMESPACE}
                         kubectl apply -f k8s/mysql-secret.yaml -n ${NAMESPACE}
                         kubectl apply -f k8s/mysql-service.yaml -n ${NAMESPACE}
