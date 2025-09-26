@@ -1,0 +1,194 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"monitoring.coreos.com/v1","kind":"PrometheusRule","metadata":{"annotations":{"meta.helm.sh/release-name":"prometheus","meta.helm.sh/release-namespace":"monitoring","prometheus-operator-validated":"true"},"creationTimestamp":"2025-09-21T14:59:56Z","generation":2,"labels":{"app":"kube-prometheus-stack","app.kubernetes.io/instance":"prometheus","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/part-of":"kube-prometheus-stack","app.kubernetes.io/version":"77.9.1","chart":"kube-prometheus-stack-77.9.1","heritage":"Helm","release":"prometheus"},"name":"todoapp-alerts","namespace":"monitoring","resourceVersion":"1652334","uid":"96461b2e-deaa-4d85-8bd0-f49eb6b11cf9"},"spec":{"groups":[{"name":"todo-app.rules","rules":[{"alert":"TodoApp-LowAvailability","annotations":{"description":"Success rate fell below 95% over the last 5 minutes.","summary":"Low availability for the Todo List Web App"},"expr":"(\n  1 -\n  (\n    sum(rate(todoapp_requests_total{namespace=\"todo-app\", job=\"todoapp-service\", exported_endpoint=~\"simulate_.*\"}[5m]))\n    /\n    sum(rate(todoapp_requests_total{namespace=\"todo-app\", job=\"todoapp-service\"}[5m]))\n  )\n) \u003c 0.95\n","for":"5m","labels":{"severity":"critical"}},{"alert":"TodoApp-HighCPU","annotations":{"description":"CPU usage is above 80% for the last 5 minutes.","summary":"High CPU usage on Todo List Web App"},"expr":"sum(\n  rate(container_cpu_usage_seconds_total{\n    namespace=\"todo-app\",\n    pod=~\"todoapp-.*\",\n    container=\"todoapp\"\n  }[5m])\n* on(pod, namespace)\n  group_left()\n  kube_pod_status_phase{phase=\"Running\", namespace=\"todo-app\"}\n) \u003e 0.8\n","for":"5m","labels":{"severity":"warning"}},{"alert":"TodoApp-HighMemory","annotations":{"description":"Memory usage is above 500Mi.","summary":"High memory usage on Todo List Web App"},"expr":"sum(\n  container_memory_usage_bytes{\n    namespace=\"todo-app\",\n    pod=~\"todoapp-.*\",\n    container=\"todoapp\"\n  }\n* on(pod, namespace)\n  group_left()\n  kube_pod_status_phase{phase=\"Running\", namespace=\"todo-app\"}\n) \u003e 500 * 1024 * 1024\n","for":"5m","labels":{"severity":"warning"}},{"alert":"TodoApp-OOM-Killed","annotations":{"description":"A my-webapp container was OOMKilled in the last 10 minutes.","summary":"OOMKilled detected in Todo List Web App"},"expr":"increase(kube_pod_container_status_last_terminated_reason{namespace=\"todo-app\" , pod=~\"todoapp-.*\", reason=\"OOMKilled\"}[10m]) \u003e 0\n","for":"1m","labels":{"severity":"critical"}},{"alert":"TodoApp-HighError-Rate(5xx)","annotations":{"description":"More than 5% of requests returned 5xx errors in the last 5 minutes.","summary":"High error rate in Todo List Web App"},"expr":"(\n  sum(\n    rate(todoapp_requests_total{\n      namespace=\"todo-app\",\n      job=\"todoapp-service\",\n      exported_endpoint=\"simulate_500\"\n    }[5m])\n  * on(pod, namespace)\n    group_left()\n    kube_pod_status_phase{phase=\"Running\", namespace=\"todo-app\"}\n  )\n  /\n  sum(\n    rate(todoapp_requests_total{\n      namespace=\"todo-app\",\n      job=\"todoapp-service\"\n    }[5m])\n  * on(pod, namespace)\n    group_left()\n    kube_pod_status_phase{phase=\"Running\", namespace=\"todo-app\"}\n  )\n) \u003e 0.05\n","for":"5m","labels":{"severity":"critical"}},{"alert":"TodoApp-HighError-Rate(4xx)","annotations":{"description":"More than 5% of requests returned 4xx errors in the last 5 minutes.","summary":"High error rate in Todo List Web App"},"expr":"(\n  sum(\n    rate(todoapp_requests_total{\n      namespace=\"todo-app\",\n      job=\"todoapp-service\",\n      exported_endpoint=\"simulate_404\"\n    }[5m])\n  * on(pod, namespace)\n    group_left()\n    kube_pod_status_phase{phase=\"Running\", namespace=\"todo-app\"}\n  )\n  /\n  sum(\n    rate(todoapp_requests_total{\n      namespace=\"todo-app\",\n      job=\"todoapp-service\"\n    }[5m])\n  * on(pod, namespace)\n    group_left()\n    kube_pod_status_phase{phase=\"Running\", namespace=\"todo-app\"}\n  )\n) \u003e 0.05\n","for":"5m","labels":{"severity":"critical"}},{"alert":"TodoApp-WebUI-Down","annotations":{"description":"The Todo List Web App {{ $labels.job }} in {{ $labels.namespace }}/{{ $labels.pod }} is not responding.","summary":"Todo List Web App {{ $labels.pod }} down"},"expr":"kube_pod_container_status_running{pod=~\"todoapp-.*\"} == 0","for":"1m","labels":{"severity":"critical"}},{"alert":"Database-Down","annotations":{"description":"The Database MySQL {{ $labels.job }} in {{ $labels.namespace }}/{{ $labels.pod }} is not responding.","summary":"Database {{ $labels.pod }} down"},"expr":"kube_pod_container_status_running{pod=~\"mysql-.*\"} == 0","for":"1m","labels":{"severity":"critical"}},{"alert":"Prometheus-Exporter-Down","annotations":{"description":"The exporter job {{ $labels.job }} in {{ $labels.namespace }}/{{ $labels.pod }} is not responding.","summary":"Exporter {{ $labels.pod }} down"},"expr":"kube_pod_container_status_running{pod=~\"prometheus-prometheus-node-exporter-.*\"} == 0","for":"1m","labels":{"severity":"critical"}},{"alert":"Splunk-UI-Down","annotations":{"description":"Splunk UI/Enterprise sidecar container failed to start or crashed.","summary":"Splunk UI/Enterprise is not running"},"expr":"kube_pod_container_status_running{container=\"splunk\"} == 0","for":"2m","labels":{"severity":"critical"}},{"alert":"Splunk-OTEL-Collector-Down","annotations":{"description":"The Splunk OTEL collector job {{ $labels.job }} in {{ $labels.namespace }}/{{ $labels.pod }} is not responding.","summary":"Splunk OTEL collector {{ $labels.pod }} down"},"expr":"kube_pod_container_status_running{pod=~\"my-splunk-otel-collector-.*\"} == 0","for":"2m","labels":{"severity":"critical"}}]}]}}
+    meta.helm.sh/release-name: prometheus
+    meta.helm.sh/release-namespace: monitoring
+    prometheus-operator-validated: "true"
+  creationTimestamp: "2025-09-21T14:59:56Z"
+  generation: 3
+  labels:
+    app: kube-prometheus-stack
+    app.kubernetes.io/instance: prometheus
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    app.kubernetes.io/version: 77.9.1
+    chart: kube-prometheus-stack-77.9.1
+    heritage: Helm
+    release: prometheus
+  name: todoapp-alerts
+  resourceVersion: "1672659"
+  uid: 96461b2e-deaa-4d85-8bd0-f49eb6b11cf9
+spec:
+  groups:
+  - name: todo-app.rules
+    rules:
+    - alert: TodoApp-LowAvailability
+      annotations:
+        description: Success rate fell below 95% over the last 5 minutes.
+        summary: Low availability for the Todo List Web App
+      expr: |
+        (
+          1 -
+          (
+            sum(rate(todoapp_requests_total{namespace="todo-app", job="todoapp-service", exported_endpoint=~"simulate_.*"}[5m]))
+            /
+            sum(rate(todoapp_requests_total{namespace="todo-app", job="todoapp-service"}[5m]))
+          )
+        ) < 0.95
+      for: 5m
+      labels:
+        severity: critical
+    - alert: TodoApp-HighCPU
+      annotations:
+        description: CPU usage is above 80% for the last 5 minutes.
+        summary: High CPU usage on Todo List Web App
+      expr: |
+        sum(
+          rate(container_cpu_usage_seconds_total{
+            namespace="todo-app",
+            pod=~"todoapp-.*",
+            container="todoapp"
+          }[5m])
+        * on(pod, namespace)
+          group_left()
+          kube_pod_status_phase{phase="Running", namespace="todo-app"}
+        ) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+    - alert: TodoApp-HighMemory
+      annotations:
+        description: Memory usage is above 500Mi.
+        summary: High memory usage on Todo List Web App
+      expr: |
+        sum(
+          container_memory_usage_bytes{
+            namespace="todo-app",
+            pod=~"todoapp-.*",
+            container="todoapp"
+          }
+        * on(pod, namespace)
+          group_left()
+          kube_pod_status_phase{phase="Running", namespace="todo-app"}
+        ) > 500 * 1024 * 1024
+      for: 5m
+      labels:
+        severity: warning
+    - alert: TodoApp-OOM-Killed
+      annotations:
+        description: A my-webapp container was OOMKilled in the last 10 minutes.
+        summary: OOMKilled detected in Todo List Web App
+      expr: |
+        increase(kube_pod_container_status_last_terminated_reason{namespace="todo-app" , pod=~"todoapp-.*", reason="OOMKilled"}[10m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+    - alert: TodoApp-HighError-Rate(5xx)
+      annotations:
+        description: More than 5% of requests returned 5xx errors in the last 5 minutes.
+        summary: High error rate in Todo List Web App
+      expr: |
+        (
+          sum(
+            rate(todoapp_requests_total{
+              namespace="todo-app",
+              job="todoapp-service",
+              exported_endpoint="simulate_500"
+            }[5m])
+          * on(pod, namespace)
+            group_left()
+            kube_pod_status_phase{phase="Running", namespace="todo-app"}
+          )
+          /
+          sum(
+            rate(todoapp_requests_total{
+              namespace="todo-app",
+              job="todoapp-service"
+            }[5m])
+          * on(pod, namespace)
+            group_left()
+            kube_pod_status_phase{phase="Running", namespace="todo-app"}
+          )
+        ) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+    - alert: TodoApp-HighError-Rate(4xx)
+      annotations:
+        description: More than 5% of requests returned 4xx errors in the last 5 minutes.
+        summary: High error rate in Todo List Web App
+      expr: |
+        (
+          sum(
+            rate(todoapp_requests_total{
+              namespace="todo-app",
+              job="todoapp-service",
+              exported_endpoint="simulate_404"
+            }[5m])
+          * on(pod, namespace)
+            group_left()
+            kube_pod_status_phase{phase="Running", namespace="todo-app"}
+          )
+          /
+          sum(
+            rate(todoapp_requests_total{
+              namespace="todo-app",
+              job="todoapp-service"
+            }[5m])
+          * on(pod, namespace)
+            group_left()
+            kube_pod_status_phase{phase="Running", namespace="todo-app"}
+          )
+        ) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+    - alert: TodoApp-WebUI-Down
+      annotations:
+        description: The Todo List Web App {{ $labels.job }} in {{ $labels.namespace
+          }}/{{ $labels.pod }} is not responding.
+        summary: Todo List Web App {{ $labels.pod }} down
+      expr: kube_pod_container_status_running{pod=~"todoapp-.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+    - alert: Database-Down
+      annotations:
+        description: The Database MySQL {{ $labels.job }} in {{ $labels.namespace
+          }}/{{ $labels.pod }} is not responding.
+        summary: Database {{ $labels.pod }} down
+      expr: kube_pod_container_status_running{pod=~"mysql-.*"} == 0
+      for: 1m
+      labels:
+        severity: critical
+    - alert: Prometheus-Exporter-Down
+      annotations:
+        description: The exporter job {{ $labels.job }} in {{ $labels.namespace }}/{{
+          $labels.pod }} is not responding.
+        summary: Exporter {{ $labels.pod }} down
+      expr: kube_pod_container_status_running{pod=~"prometheus-prometheus-node-exporter-.*"}
+        == 0
+      for: 1m
+      labels:
+        severity: critical
+    - alert: Splunk-UI-Down
+      annotations:
+        description: Splunk UI/Enterprise sidecar container failed to start or crashed.
+        summary: Splunk UI/Enterprise is not running
+      expr: kube_pod_container_status_running{container="splunk"} == 0
+      for: 2m
+      labels:
+        severity: critical
+    - alert: Splunk-OTEL-Collector-Down
+      annotations:
+        description: The Splunk OTEL collector job {{ $labels.job }} in {{ $labels.namespace
+          }}/{{ $labels.pod }} is not responding.
+        summary: Splunk OTEL collector {{ $labels.pod }} down
+      expr: kube_pod_container_status_running{pod=~"my-splunk-otel-collector-.*"}
+        == 0
+      for: 2m
+      labels:
+        severity: critical

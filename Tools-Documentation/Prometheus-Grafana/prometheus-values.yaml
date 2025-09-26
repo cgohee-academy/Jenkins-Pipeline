@@ -1,0 +1,99 @@
+prometheus:
+  prometheusSpec:
+    # Storage configuration (currently does not respect the size request in our cluster)
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    
+    retention: 7d
+    retentionSize: 1.8GB
+    scrapeInterval: 60s
+    evaluationInterval: 60s
+    
+    # Disable resource-heavy features for smaller environments
+    enableAdminAPI: false
+
+# AlertManager configuration
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 200Mi
+    
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+# Grafana disabled (installed separately for better control)
+grafana:
+  enabled: false
+
+nodeExporter:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+kubeStateMetrics:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  
+  admissionWebhooks:
+    enabled: true
+    patch:
+      enabled: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+# Additional scrape configs for Jenkins monitoring
+additionalScrapeConfigs: |
+  - job_name: 'jenkins'
+    static_configs:
+      - targets: ['jenkins.jenkins.svc.cluster.local:8080']
+    metrics_path: '/prometheus'
+    scrape_interval: 60s

@@ -1,0 +1,16 @@
+splunk-operator:
+  enabled: true
+
+image:
+  repository: docker.io/splunk/splunk:10.0
+
+# Splunk Operator configurations
+splunkOperator:
+  image:
+    repository: docker.io/splunk/splunk-operator:3.0.0
+    pullPolicy: IfNotPresent
+  clusterWideAccess: true
+  persistentVolumeClaim:
+    storageClassName: linode-block-storage-retain
+
+  splunkGeneralTerms: "--accept-sgt-current-at-splunk-com"

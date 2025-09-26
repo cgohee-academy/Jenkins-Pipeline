@@ -1,0 +1,356 @@
+{
+  "title": "Error Rate and User Agents Over Time",
+  "description": "",
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-24h@h,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    }
+  },
+  "defaults": {
+    "dataSources": {
+      "ds.search": {
+        "options": {
+          "queryParameters": {
+            "earliest": "$global_time.earliest$",
+            "latest": "$global_time.latest$"
+          }
+        }
+      }
+    },
+    "visualizations": {
+      "global": {
+        "showProgressBar": true
+      }
+    }
+  },
+  "visualizations": {
+    "viz_4u6xu2Hc": {
+      "dataSources": {
+        "primary": "ds_Fz4mPYAm"
+      },
+      "title": "Unique Users Over Time",
+      "type": "splunk.line"
+    },
+    "viz_ORTBAHSl": {
+      "dataSources": {
+        "primary": "ds_OjMymJfT"
+      },
+      "title": "Error Rate Over Time",
+      "type": "splunk.line",
+      "options": {
+        "nullValueDisplay": "zero"
+      }
+    },
+    "viz_iF2CBqPI": {
+      "containerOptions": {},
+      "dataSources": {
+        "primary": "ds_S5nunyKo"
+      },
+      "options": {
+        "unit": "%",
+        "trendDisplay": "percent"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": true,
+      "title": "Current Error Rate",
+      "type": "splunk.singlevalueradial"
+    },
+    "viz_jP5nkQrM": {
+      "containerOptions": {},
+      "dataSources": {
+        "primary": "ds_Pwdd3xY0"
+      },
+      "options": {
+        "label": "> primary | seriesByName('level')",
+        "value": "> primary | seriesByName('count')",
+        "showDonutHole": true,
+        "labelDisplay": "valuesAndPercentage"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": true,
+      "title": "Log Level Distribution",
+      "type": "splunk.pie"
+    },
+    "viz_bY8Rckhq": {
+      "type": "splunk.bar",
+      "title": "Top Endpoints by Traffic",
+      "dataSources": {
+        "primary": "ds_rFycfRZd"
+      },
+      "options": {
+        "x": "> primary | seriesByName('url')",
+        "y2": "> primary | frameBySeriesNames('')",
+        "dataValuesDisplay": "all",
+        "stackMode": "stacked",
+        "y": "> primary | frameBySeriesNames('request_count')"
+      }
+    },
+    "viz_nu9iMv3F": {
+      "type": "splunk.pie",
+      "title": "Errors by Status Code",
+      "dataSources": {
+        "primary": "ds_5ChMpgqP"
+      },
+      "options": {
+        "labelDisplay": "valuesAndPercentage",
+        "label": "> primary | seriesByName('status_code')",
+        "value": "> primary | seriesByName('status_code')"
+      }
+    },
+    "viz_NzIqIVCW": {
+      "type": "splunk.bar",
+      "title": "Users by User Agent (Browser/Client)",
+      "dataSources": {
+        "primary": "ds_TEH1YxzB"
+      },
+      "containerOptions": {},
+      "showProgressBar": true,
+      "showLastUpdated": false,
+      "options": {},
+      "context": {}
+    },
+    "viz_w6ipr63a": {
+      "type": "splunk.line",
+      "title": "Request Volume Trend",
+      "dataSources": {
+        "primary": "ds_15vEgEBZ"
+      },
+      "containerOptions": {},
+      "showProgressBar": true,
+      "showLastUpdated": false,
+      "description": "To see if traffic spikes/drops are affecting performance."
+    },
+    "viz_Hb8zoUie": {
+      "type": "splunk.column",
+      "title": "Success vs Error Breakdown",
+      "dataSources": {
+        "primary": "ds_QhdgmQL9"
+      }
+    },
+    "viz_IYH5ypPX": {
+      "type": "splunk.line",
+      "title": "Response Time Trend",
+      "dataSources": {
+        "primary": "ds_IVTqNKrP"
+      },
+      "options": {
+        "x": "> primary | seriesByName('_time')",
+        "y2": "> primary | frameBySeriesNames('p95_response')",
+        "overlayFields": [],
+        "y": "> primary | frameBySeriesNames('avg_response','p95_response','_span')",
+        "showSplitSeries": true,
+        "nullValueDisplay": "zero"
+      },
+      "containerOptions": {
+        "visibility": {}
+      }
+    }
+  },
+  "dataSources": {
+    "ds_Fz4mPYAm": {
+      "name": "Unique users over time",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\n| timechart span=15m dc(user_agent) as unique_users\n"
+      },
+      "type": "ds.search"
+    },
+    "ds_OjMymJfT": {
+      "name": "Error rate over time",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\" | timechart span=15m count as total_requests, count(eval(status_code >= 400)) as error_count | eval error_rate=round(error_count/total_requests * 100, 2) | fields _time, error_rate\n"
+      },
+      "type": "ds.search"
+    },
+    "ds_Pwdd3xY0": {
+      "name": "Log Level Distribution",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\r\n| stats count by level"
+      },
+      "type": "ds.search"
+    },
+    "ds_S5nunyKo": {
+      "name": "Current error rate",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\r\n| bin _time span=15m\r\n| stats count as total_requests, count(eval(status_code >= 400)) as error_count by _time\r\n| eval error_rate = round(error_count / total_requests * 100, 2)\r\n| tail 1\r\n| table error_rate"
+      },
+      "type": "ds.search"
+    },
+    "ds_rFycfRZd": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\r\n| stats count as request_count by url\r\n| sort -request_count\r\n| head 10"
+      },
+      "name": "Top Endpoints by Traffic"
+    },
+    "ds_5ChMpgqP": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\" status_code!=200\r\n| eval is_error = if(status_code >= 400, 1, 0)\r\n| eventstats count as total_requests, sum(is_error) as error_count\r\n| where error_count > 0 AND status_code >= 400\r\n| stats count by status_code\r\n| sort -count"
+      },
+      "name": "Errors by Status Code"
+    },
+    "ds_TEH1YxzB": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\r\n| eval browser = case(\r\n    like(user_agent, \"%Chrome%\"), \"Chrome\",\r\n    like(user_agent, \"%Firefox%\"), \"Firefox\",\r\n    like(user_agent, \"%Safari%\"), \"Safari\",\r\n    like(user_agent, \"%Edge%\"), \"Edge\",\r\n    like(user_agent, \"%MSIE%\") OR like(user_agent, \"%Trident%\"), \"Internet Explorer\",\r\n    true(), \"Other\"\r\n)\r\n| stats dc(user_agent) as unique_users by browser\r\n| sort -unique_users"
+      },
+      "name": "Users by User Agent"
+    },
+    "ds_15vEgEBZ": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\" event_type!=\"NULL\"\r\n| timechart span=15m count by event_type"
+      },
+      "name": "Request Volume Trend"
+    },
+    "ds_QhdgmQL9": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\r\n| eval outcome = if(status_code < 400, \"Success\", \"Error\")\r\n| timechart span=15m count by outcome\r\n",
+        "queryParameters": {
+          "earliest": "-60m@m",
+          "latest": "now"
+        }
+      },
+      "name": "Success vs Error Breakdown"
+    },
+    "ds_IVTqNKrP": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:container:todoapp\"\r\n| timechart span=15m avg(duration_seconds) as avg_response p95(duration_seconds) as p95_response"
+      },
+      "name": "Response Time Trend"
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_global_trp"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "display": "auto",
+          "height": 1440,
+          "width": 1920
+        },
+        "structure": [
+          {
+            "item": "viz_ORTBAHSl",
+            "position": {
+              "h": 330,
+              "w": 1230,
+              "x": 0,
+              "y": 0
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_iF2CBqPI",
+            "position": {
+              "h": 330,
+              "w": 325,
+              "x": 1600,
+              "y": 0
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_jP5nkQrM",
+            "position": {
+              "h": 300,
+              "w": 370,
+              "x": 1550,
+              "y": 340
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_4u6xu2Hc",
+            "position": {
+              "h": 300,
+              "w": 957,
+              "x": 0,
+              "y": 650
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_bY8Rckhq",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 340,
+              "w": 910,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_nu9iMv3F",
+            "type": "block",
+            "position": {
+              "x": 1250,
+              "y": 0,
+              "w": 325,
+              "h": 330
+            }
+          },
+          {
+            "item": "viz_NzIqIVCW",
+            "type": "block",
+            "position": {
+              "x": 960,
+              "y": 650,
+              "w": 958,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_w6ipr63a",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 960,
+              "w": 957,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_Hb8zoUie",
+            "type": "block",
+            "position": {
+              "x": 960,
+              "y": 960,
+              "w": 958,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_IYH5ypPX",
+            "type": "block",
+            "position": {
+              "x": 930,
+              "y": 340,
+              "w": 600,
+              "h": 300
+            }
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "options": {},
+    "tabs": {
+      "items": [
+        {
+          "label": "New tab",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  }
+}

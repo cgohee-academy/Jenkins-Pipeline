@@ -1,0 +1,328 @@
+{
+  "title": "K8s Dashboard by Events",
+  "description": "",
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-24h@h,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    }
+  },
+  "defaults": {
+    "dataSources": {
+      "ds.search": {
+        "options": {
+          "queryParameters": {
+            "earliest": "$global_time.earliest$",
+            "latest": "$global_time.latest$"
+          }
+        }
+      }
+    },
+    "visualizations": {
+      "global": {
+        "showProgressBar": true
+      }
+    }
+  },
+  "visualizations": {
+    "viz_14gyGmHe": {
+      "dataSources": {
+        "primary": "ds_ejlhARlj"
+      },
+      "title": "Events by Severity",
+      "type": "splunk.pie"
+    },
+    "viz_TP1gfHhm": {
+      "dataSources": {
+        "primary": "ds_DDasAvSd"
+      },
+      "title": "Total Events",
+      "type": "splunk.singlevalue"
+    },
+    "viz_SeaVj5gF": {
+      "type": "splunk.line",
+      "title": "Events Over Time",
+      "dataSources": {
+        "primary": "ds_OpDcQIJt"
+      }
+    },
+    "viz_xbBWWhTl": {
+      "type": "splunk.bar",
+      "title": "Events by Namespace",
+      "dataSources": {
+        "primary": "ds_7Vs0luVH"
+      }
+    },
+    "viz_zCbD5o8X": {
+      "type": "splunk.bar",
+      "title": "Top Event Reasons",
+      "dataSources": {
+        "primary": "ds_XO645Ady"
+      },
+      "options": {},
+      "context": {},
+      "containerOptions": {},
+      "showProgressBar": true,
+      "showLastUpdated": false
+    },
+    "viz_Y2L60T8V": {
+      "type": "splunk.bar",
+      "title": "Top Pods with Most Events",
+      "dataSources": {
+        "primary": "ds_wvZuFEng"
+      }
+    },
+    "viz_g9EyKiWB": {
+      "type": "splunk.table",
+      "title": "Pods with Failures",
+      "description": "Pods with Failures (Warning/Error Events)",
+      "dataSources": {
+        "primary": "ds_9INYtkQ1"
+      }
+    },
+    "viz_fwA9tpC2": {
+      "type": "splunk.column",
+      "title": "Events by Container",
+      "dataSources": {
+        "primary": "ds_pKQFwkoG"
+      }
+    },
+    "viz_a1cUr1tR": {
+      "type": "splunk.bar",
+      "title": "Top Error Reasons",
+      "dataSources": {
+        "primary": "ds_Sjv93IYQ"
+      }
+    },
+    "viz_roNCw6LW": {
+      "type": "splunk.table",
+      "title": "Recent Warning Events",
+      "dataSources": {
+        "primary": "ds_jvlp4SfH"
+      }
+    }
+  },
+  "dataSources": {
+    "ds_DDasAvSd": {
+      "name": "Total Events",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats count as total_events"
+      },
+      "type": "ds.search"
+    },
+    "ds_ejlhARlj": {
+      "name": "Events by Severity",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats count by otel.log.severity.text"
+      },
+      "type": "ds.search"
+    },
+    "ds_OpDcQIJt": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| timechart span=5m count by otel.log.severity.text"
+      },
+      "name": "Events Over Time"
+    },
+    "ds_7Vs0luVH": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\" k8s.namespace.name!=\"\"\r\n| stats count by k8s.namespace.name\r\n| sort - count"
+      },
+      "name": "Events by Namespace"
+    },
+    "ds_XO645Ady": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats count by k8s.event.reason\r\n| sort - count\r\n"
+      },
+      "name": "Top Event Reasons"
+    },
+    "ds_HvIrtIPd": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats count by k8s.cluster.name"
+      },
+      "name": "Events by Cluster"
+    },
+    "ds_wvZuFEng": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| top limit=10 k8s.pod.name"
+      },
+      "name": "Top Pods with Most Events"
+    },
+    "ds_FrYvekBj": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats count by k8s.pod.name, k8s.event.reason\r\n| sort - count"
+      },
+      "name": "Pod Event Reasons"
+    },
+    "ds_9INYtkQ1": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\" (otel.log.severity.text=\"Warning\" OR otel.log.severity.text=\"Error\")\r\n| stats count by k8s.pod.name, k8s.event.reason"
+      },
+      "name": "Pods with Failures"
+    },
+    "ds_pKQFwkoG": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats count by container_name"
+      },
+      "name": "Events by Container"
+    },
+    "ds_7VUICUdq": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\"\r\n| stats dc(container_image_tag) as unique_tags by container_image"
+      },
+      "name": "Image Tags in Use"
+    },
+    "ds_Sjv93IYQ": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\" otel.log.severity.text=\"Warning\"\r\n| stats count by k8s.event.reason\r\n| sort - count"
+      },
+      "name": "Top Error Reasons"
+    },
+    "ds_jvlp4SfH": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=\"k8s_logs\" sourcetype=\"kube:events\" otel.log.severity.text=\"Warning\"\r\n| table _time k8s.namespace.name k8s.pod.name k8s.event.reason\r\n| sort - _time"
+      },
+      "name": "Recent Warning Events"
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_global_trp"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "display": "auto",
+          "height": 1440,
+          "width": 1920
+        },
+        "structure": [
+          {
+            "item": "viz_TP1gfHhm",
+            "position": {
+              "h": 300,
+              "w": 300,
+              "x": 0,
+              "y": 0
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_14gyGmHe",
+            "position": {
+              "h": 300,
+              "w": 450,
+              "x": 320,
+              "y": 0
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_SeaVj5gF",
+            "type": "block",
+            "position": {
+              "x": 790,
+              "y": 0,
+              "w": 1090,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_xbBWWhTl",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 320,
+              "w": 630,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_zCbD5o8X",
+            "type": "block",
+            "position": {
+              "x": 650,
+              "y": 320,
+              "w": 580,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_Y2L60T8V",
+            "type": "block",
+            "position": {
+              "x": 1250,
+              "y": 320,
+              "w": 630,
+              "h": 440
+            }
+          },
+          {
+            "item": "viz_g9EyKiWB",
+            "type": "block",
+            "position": {
+              "x": 1250,
+              "y": 770,
+              "w": 630,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_fwA9tpC2",
+            "type": "block",
+            "position": {
+              "x": 900,
+              "y": 1090,
+              "w": 980,
+              "h": 350
+            }
+          },
+          {
+            "item": "viz_a1cUr1tR",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 1090,
+              "w": 880,
+              "h": 350
+            }
+          },
+          {
+            "item": "viz_roNCw6LW",
+            "type": "block",
+            "position": {
+              "x": 0,
+              "y": 730,
+              "w": 1230,
+              "h": 340
+            }
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "options": {},
+    "tabs": {
+      "items": [
+        {
+          "label": "New tab",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,48 @@
+clusterName: "techworms-case-study"
+
+splunkPlatform:
+  endpoint: "https://splunk-hec-service-here/services/collector"
+  token: "splunk-hec-token-here"
+  index: "k8s_logs"
+  metricsIndex: "k8s_metrics"
+  insecureSkipVerify: true
+  logsEnabled: true
+  metricsEnabled: true
+
+agent:
+  enabled: true
+  controlPlaneMetrics:
+    apiserver:
+      enabled: true
+    controllerManager:
+      enabled: true
+    coredns:
+      enabled: true
+    proxy:
+      enabled: true
+    scheduler:
+      enabled: true
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 500Mi
+
+  config:
+    processors:
+      # We only need this processor to add the k8s labels to the logs.
+      k8sattributes:
+        extract:
+          labels:
+            - key: splunk/type # This will be extracted from the pod
+              from: pod
+            - key: app # Extract the app label too
+              from: pod
+
+    service:
+      pipelines:
+        # A single, simple pipeline for ALL logs
+        logs:
+          # The chart will automatically add the default log receivers
+          processors: [k8sattributes, memory_limiter, batch]
+          # The chart will automatically add the default HEC exporter from splunkPlatform

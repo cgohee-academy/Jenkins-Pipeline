@@ -1,0 +1,62 @@
+persistence:
+  # Storage configuration (currently does not respect the size request in our cluster)
+  enabled: true
+  size: 500Mi
+  accessModes:
+    - ReadWriteOnce
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+adminUser: admin
+adminPassword: password-here
+
+service:
+  type: ClusterIP
+  port: 80
+
+auth:
+  disable_login_form: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+      access: proxy
+      isDefault: true
+
+# Dashboard providers
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+
+env:
+  GF_EXPLORE_ENABLED: true
+  GF_ALERTING_ENABLED: true
+  GF_SECURITY_ALLOW_EMBEDDING: true
+
+plugins:
+  - grafana-piechart-panel
+  - grafana-worldmap-panel
+
+securityContext:
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472

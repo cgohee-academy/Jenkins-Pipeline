@@ -1,0 +1,25 @@
+splunk-operator:
+  enabled: false
+
+sva:
+  s1:
+    enabled: true
+    standalones: 1
+
+standalone:
+  enabled: true
+  name: "stdln"
+  replicaCount: 1
+  etcVolumeStorageConfig:
+    ephemeralStorage: false
+    storageCapacity: 10Gi
+  varVolumeStorageConfig:
+    ephemeralStorage: false
+    storageCapacity: 10Gi
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2"

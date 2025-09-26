@@ -1,0 +1,38 @@
+# jenkins-values.yaml
+controller:
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  javaOpts: "-Xms256m -Xmx768m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC"
+  numExecutors: 1
+  executorMode: "EXCLUSIVE"
+  admin:
+    username: "admin"
+    password: "your-password-here"
+  serviceType: LoadBalancer
+  servicePort: 8080
+
+persistence:
+  enabled: true
+  size: 2.5Gi
+
+agent:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+rbac:
+  create: true
+  readSecrets: true
+
+serviceAccount:
+  create: true
