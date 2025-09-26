@@ -21,7 +21,8 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // CRITICAL: Clone the application code repository (i9b-observability)
+                    // CRITICAL: Clones the application code (i9b-observability) 
+                    // and makes it available in the workspace.
                     checkout([
                         $class: 'GitSCM', 
                         branches: [[name: '*/main']], 
@@ -30,7 +31,7 @@ pipeline {
                         userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
                     ])
                     
-                    // Set the image tag using the application code's commit hash
+                    // Set the image tag using the application code's commit hash.
                     if (env.GIT_COMMIT == null) {
                         env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
                     }
@@ -43,7 +44,7 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // FIX: Dockerfile path set to the root directory
+                    // FIX: Cleaned up the shell command. Dockerfile path is in the root.
                     sh """
                         /kaniko/executor \\
                           --dockerfile=Dockerfile \\ 
@@ -64,7 +65,7 @@ pipeline {
                         # 1. Inject built image with tag into deployment before applying
                         sed -i "s|image: todoapp:latest|image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG}|g" k8s/todoapp-deployment.yaml
 
-                        # 2. Apply all manifests (Ensure these files are in your cloned workspace)
+                        # 2. Apply all manifests
                         kubectl apply -f k8s/todoapp-alerts.yaml -n ${MONITORING_NAMESPACE}
                         kubectl apply -f k8s/mysql-secret.yaml -n ${NAMESPACE}
                         kubectl apply -f k8s/mysql-service.yaml -n ${NAMESPACE}
