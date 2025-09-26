@@ -44,16 +44,8 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // FIX: This section must be perfectly clean of trailing whitespace.
-                    sh """
-                        /kaniko/executor \\
-                          --dockerfile=Dockerfile \\ 
-                          --context=. \\
-                          --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} \\
-                          --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest \\
-                          --cache=true \\
-                          --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache
-                    """
+                    // FIX: Command is now on a single line to avoid the rogue space issue.
+                    sh " /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache "
                 }
             }
         }
