@@ -18,59 +18,51 @@ pipeline {
     }
 
     stages {
-        stage('Manual Veto Check') {
-            // The pod is already running due to the global agent { kubernetes { label 'kaniko' } }
+        stage('Build') {
+            steps {
+                echo 'Building the application...'
+            }
+        }
+
+        stage('Approval') {
             steps {
                 script {
-                    // --- 1. START A BACKGROUND SLEEP PROCESS ---
-                    // This process runs in the background for 11 minutes, 
-                    // telling the agent it's still busy.
-                    def p = sh(script: 'nohup sleep 660 &', returnStatus: true) // 660 seconds = 11 minutes
-                    
-                    try {
-                        // --- 2. RUN THE TIMEOUT/INPUT CHECK ---
-                        timeout(time: 10, unit: 'MINUTES') {
-                            input(
-                                id: 'manual-veto-check',
-                                message: 'Deployment complete. Do you see any unexpected errors or failures? Abort to rollback.',
-                                ok: 'Proceed'
+                    // Prompt the user to proceed or abort
+                    def userInput = input(
+                        id: 'ApprovalPrompt',       // unique ID for resuming
+                        message: 'Deploy to production?',
+                        ok: 'Proceed',
+                        parameters: [
+                            choice(
+                                name: 'ACTION',
+                                choices: ['Proceed', 'Abort'],
+                                description: 'Choose what to do next.'
                             )
-                        }
-                        echo "Manual check passed. Deployment is considered successful."
-        
-                    } catch (err) {
-                        // --- 3. HANDLE ABORT/TIMEOUT LOGIC ---
-                        if (err instanceof org.jenkinsci.plugins.workflow.steps.FlowInterruptedException) {
-                            if (err.causes.find { it instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout }) {
-                                echo "10-minute timeout reached. Assuming the app is WORKING and proceeding."
-                            } else {
-                                echo "User explicitly requested a rollback. Proceeding to Rollback Stage."
-                                currentBuild.result = 'FAILURE'
-                                throw err
-                            }
-                        } else {
-                            throw err
-                        }
-        
-                    } finally {
-                        // --- 4. KILL THE BACKGROUND PROCESS (OPTIONAL BUT CLEAN) ---
-                        // The process will eventually terminate anyway, but this is cleaner.
-                        sh(script: 'pkill sleep || true', returnStatus: true) 
-                    }
+                        ]
+                    )
+
+                    // Save the choice into an environment variable
+                    env.USER_CHOICE = userInput
                 }
             }
         }
-    }
-    
-    post {
-        failure {
-            echo 'Deployment failed (User Veto). Initiating automatic rollback.'
-            container('kubectl') {
-                sh "kubectl rollout undo deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}"
+
+        stage('Deploy') {
+            when {
+                expression { env.USER_CHOICE == 'Proceed' }
+            }
+            steps {
+                echo 'Deploying to production...'
             }
         }
-        success {
-            echo "Deployment successful and passed manual review period."
+
+        stage('Abort Notice') {
+            when {
+                expression { env.USER_CHOICE == 'Abort' }
+            }
+            steps {
+                echo 'Deployment was aborted by user.'
+            }
         }
     }
 }
