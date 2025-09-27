@@ -23,18 +23,18 @@ pipeline {
                 script {
                     // CRITICAL: Clones the application code (i9b-observability) 
                     // and makes it available in the workspace.
-                    checkout([
-                        $class: 'GitSCM', 
-                        branches: [[name: '*/main']], 
-                        doGenerateSubmoduleConfigurations: false, 
-                        extensions: [], 
-                        userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
-                    ])
+                    //checkout([
+                        //$class: 'GitSCM', 
+                        //branches: [[name: '*/main']], 
+                        //doGenerateSubmoduleConfigurations: false, 
+                        //extensions: [], 
+                        //userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
+                   // ])
                     
                     // Set the image tag using the application code's commit hash.
-                    if (env.GIT_COMMIT == null) {
-                        env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
-                    }
+                    //if (env.GIT_COMMIT == null) {
+                        //env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
+                    //}
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
                     echo "Building image with tag: ${env.IMAGE_TAG}"
                 }
