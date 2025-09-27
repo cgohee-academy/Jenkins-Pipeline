@@ -23,7 +23,7 @@ pipeline {
                 script {
                     // FIX APPLIED: Using sh 'git clone' to reliably pull the code.
                     withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
-                        sh """
+                        sh '''
                             # --- CRITICAL FIX: Double-escaped (\\$) the GITHUB_TOKEN ---
                             git clone https://\\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
                             
@@ -31,7 +31,7 @@ pipeline {
                             mv app_temp/* .
                             mv app_temp/.git .
                             rm -rf app_temp
-                        """
+                        '''
                     }
 
                     // Set the image tag using the application code's commit hash.
