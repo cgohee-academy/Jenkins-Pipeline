@@ -21,20 +21,24 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // CRITICAL: Clones the application code (i9b-observability) 
-                    // and makes it available in the workspace.
-                    //checkout([
-                        //$class: 'GitSCM', 
-                        //branches: [[name: '*/main']], 
-                        //doGenerateSubmoduleConfigurations: false, 
-                        //extensions: [], 
-                        //userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
-                   // ])
-                    
+                    // FIX APPLIED: Using sh 'git clone' to bypass Jenkins Git plugin issues 
+                    // and guarantee the latest code (with the Dockerfile) is in the workspace root.
+                    withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
+                        sh """
+                            # Clone into a temporary directory using the GITHUB_TOKEN for authentication
+                            git clone https://\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
+                            
+                            # Move all contents from the cloned repo to the root of the workspace
+                            mv app_temp/* .
+                            mv app_temp/.git .
+                            rm -rf app_temp
+                        """
+                    }
+
                     // Set the image tag using the application code's commit hash.
-                    //if (env.GIT_COMMIT == null) {
-                        //env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
-                    //}
+                    if (env.GIT_COMMIT == null) {
+                        env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
+                    }
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.substring(0, 7)}"
                     echo "Building image with tag: ${env.IMAGE_TAG}"
                 }
@@ -44,8 +48,24 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // FIX: Command is now on a single line to avoid the rogue space issue.
-                    sh " /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache "
+                    sh """
+                        # --- FIX: PATCH DOCKERFILE FOR KANIKO ERROR ---
+                        # Deletes any line that starts with 'LABEL' but doesn't have a valid assignment 
+                        # (e.g., 'LABEL' or 'LABEL some-key').
+                        sed -i '/^\s*LABEL\s\+\([a-zA-Z0-9_-]\+\)\?\s*$/d' Dockerfile
+
+                        # If the broken line is ONLY "LABEL" with nothing else, use the simpler version instead:
+                        # sed -i '/^\s*LABEL\s*$/d' Dockerfile
+                        
+                        # Command is now split across lines for readability inside the shell script block
+                        /kaniko/executor \\
+                          --dockerfile=Dockerfile \\
+                          --context=. \\
+                          --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} \\
+                          --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest \\
+                          --cache=true \\
+                          --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache
+                    """
                 }
             }
         }
@@ -55,6 +75,12 @@ pipeline {
                 container('kubectl') {
                     sh """
                         # 1. Inject built image with tag into deployment before applying
+                        # Check if k8s folder exists before attempting to apply manifests
+                        if [ ! -d "k8s" ]; then
+                           echo "ERROR: 'k8s' directory not found. Deployment cannot proceed."
+                           exit 1
+                        fi
+                        
                         sed -i "s|image: todoapp:latest|image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG}|g" k8s/todoapp-deployment.yaml
 
                         # 2. Apply all manifests
