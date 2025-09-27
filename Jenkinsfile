@@ -21,19 +21,16 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX APPLIED: Git token is now properly double-escaped (\\$) inside the triple-quote block
-                    withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
-                        sh """
-                            # Clone into a temporary directory using the GITHUB_TOKEN for authentication
-                            git clone https://\\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
-                            
-                            # Move all contents from the cloned repo to the root of the workspace
-                            mv app_temp/* .
-                            mv app_temp/.git .
-                            rm -rf app_temp
-                        """
-                    }
-
+                    // CRITICAL: Clones the application code (i9b-observability) 
+                    // and makes it available in the workspace.
+                    checkout([
+                        $class: 'GitSCM', 
+                        branches: [[name: '*/main']], 
+                        doGenerateSubmoduleConfigurations: false, 
+                        extensions: [], 
+                        userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
+                    ])
+                    
                     // Set the image tag using the application code's commit hash.
                     if (env.GIT_COMMIT == null) {
                         env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
@@ -47,15 +44,8 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // FIX: Using triple quotes (sh """), and patching the Dockerfile with sed
-                    sh """
-                        # --- PATCH DOCKERFILE FOR 'LABEL' ERROR ---
-                        # Safely remove any line that contains ONLY 'LABEL' (and optional surrounding whitespace).
-                        sed -i '/^\\s*LABEL\\s*$/d' Dockerfile
-
-                        # Run Kaniko executor command
-                        /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache
-                    """
+                    // FIX: Command is now on a single line to avoid the rogue space issue.
+                    sh " /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache "
                 }
             }
         }
