@@ -21,16 +21,19 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX APPLIED HERE: Added changelog: false and DisableLocalBranchCleanup
-                    checkout([
-                        $class: 'GitSCM', 
-                        branches: [[name: '*/main']], 
-                        doGenerateSubmoduleConfigurations: false, 
-                        changelog: false, 
-                        extensions: [[$class: 'DisableLocalBranchCleanup']], 
-                        userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
-                    ])
-                    
+                    // FIX: Using sh 'git clone' to bypass Jenkins Git plugin issues and ensure latest code
+                    withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
+                        sh """
+                            # Clone into a temporary directory using the GITHUB_TOKEN for authentication
+                            git clone https://\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
+                            
+                            # Move all contents from the cloned repo to the root of the workspace
+                            mv app_temp/* .
+                            mv app_temp/.git .
+                            rm -rf app_temp
+                        """
+                    }
+
                     // Set the image tag using the application code's commit hash.
                     if (env.GIT_COMMIT == null) {
                         env.GIT_COMMIT = sh(returnStdout: true, script: 'git rev-parse HEAD').trim() 
@@ -44,7 +47,7 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // Command remains on a single line to avoid the rogue space issue.
+                    // Command is on a single line and Dockerfile path is in the root
                     sh " /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache "
                 }
             }
