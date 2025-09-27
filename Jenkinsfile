@@ -21,13 +21,13 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX APPLIED HERE: Added changelog: false and DisableLocalBranchCleanup
+                    // CRITICAL: Clones the application code (i9b-observability) 
+                    // and makes it available in the workspace.
                     checkout([
                         $class: 'GitSCM', 
                         branches: [[name: '*/main']], 
                         doGenerateSubmoduleConfigurations: false, 
-                        changelog: false, 
-                        extensions: [[$class: 'DisableLocalBranchCleanup']], 
+                        extensions: [], 
                         userRemoteConfigs: [[credentialsId: 'github-pat-auth', url: 'https://github.com/opswerks-academy/i9b-observability.git']]
                     ])
                     
@@ -44,7 +44,7 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
-                    // Command remains on a single line to avoid the rogue space issue.
+                    // FIX: Command is now on a single line to avoid the rogue space issue.
                     sh " /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache "
                 }
             }
