@@ -19,48 +19,43 @@ pipeline {
 
     stages {
         stage('Manual Veto Check') {
-            agent {
-                label 'none' 
-            }
-            
+            // The pod is already running due to the global agent { kubernetes { label 'kaniko' } }
             steps {
                 script {
+                    // --- 1. START A BACKGROUND SLEEP PROCESS ---
+                    // This process runs in the background for 11 minutes, 
+                    // telling the agent it's still busy.
+                    def p = sh(script: 'nohup sleep 660 &', returnStatus: true) // 660 seconds = 11 minutes
+                    
                     try {
-                        // The pipeline will wait here for 10 minutes.
-                        // If the user clicks 'Proceed', execution continues below the 'timeout'.
-                        // If the user clicks 'Abort' (the default abort button), an exception is thrown.
-                        // If the 10-minute timeout is reached, an exception is thrown.
+                        // --- 2. RUN THE TIMEOUT/INPUT CHECK ---
                         timeout(time: 10, unit: 'MINUTES') {
                             input(
                                 id: 'manual-veto-check',
                                 message: 'Deployment complete. Do you see any unexpected errors or failures? Abort to rollback.',
-                                ok: 'Proceed' // This is the 'Proceed' button
+                                ok: 'Proceed'
                             )
                         }
-                        // This part is reached ONLY if a user clicks "Proceed" BEFORE the timeout.
                         echo "Manual check passed. Deployment is considered successful."
         
                     } catch (err) {
-                        // This catch block handles:
-                        // 1. User clicking 'Abort' (FlowInterruptedException)
-                        // 2. The 10-minute timeout (FlowInterruptedException)
-        
+                        // --- 3. HANDLE ABORT/TIMEOUT LOGIC ---
                         if (err instanceof org.jenkinsci.plugins.workflow.steps.FlowInterruptedException) {
-                            // Check if the interruption was NOT caused by the timeout, implying a user abort.
                             if (err.causes.find { it instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout }) {
-                                // **TIMEOUT REACHED:** The error was the timeout. Treat this as a successful "soft proceed".
                                 echo "10-minute timeout reached. Assuming the app is WORKING and proceeding."
-        
                             } else {
-                                // **USER ABORTED:** The error was an explicit user abort.
                                 echo "User explicitly requested a rollback. Proceeding to Rollback Stage."
                                 currentBuild.result = 'FAILURE'
-                                throw err // Re-throw to cause the failure block to execute
+                                throw err
                             }
                         } else {
-                            // Other unexpected exception
                             throw err
                         }
+        
+                    } finally {
+                        // --- 4. KILL THE BACKGROUND PROCESS (OPTIONAL BUT CLEAN) ---
+                        // The process will eventually terminate anyway, but this is cleaner.
+                        sh(script: 'pkill sleep || true', returnStatus: true) 
                     }
                 }
             }
