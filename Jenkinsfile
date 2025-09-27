@@ -18,25 +18,27 @@ pipeline {
     }
 
     stages {
-
         stage('Manual Veto Check') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        try {
+                script {
+                    try {
+                        timeout(time: 10, unit: 'MINUTES') {
                             input(
                                 id: 'manual-veto-check',
-                                message: 'Deployment complete. Do you see any unexpected errors or failures? Rollback if necessary.',
-                                submitter: 'rcanonigo, @some-dev-team', 
+                                message: 'Deployment complete. Do you see any unexpected errors or failures? Abort to rollback.',
+                                ok: 'Proceed'
                             )
-                        } catch (err) {
-                            if (currentBuild.result == 'TIMEOUT') {
-                                echo "10-minute timeout reached. Assuming the app is WORKING."
-                            } else {
-                                echo "User explicitly requested a rollback. Proceeding to Rollback Stage."
-                                currentBuild.result = 'FAILURE'
-                                throw err 
-                            }
+                        }
+                        // This part is reached ONLY if a user clicks "Proceed".
+                        echo "Manual check passed. Deployment is considered successful."
+    
+                    } catch (err) {
+                        if (err instanceof org.jenkinsci.plugins.workflow.steps.FlowInterruptedException) {
+                            echo "User explicitly requested a rollback. Proceeding to Rollback Stage."
+                            currentBuild.result = 'FAILURE'
+                            throw err
+                        } else {
+                            echo "10-minute timeout reached. Assuming the app is WORKING."
                         }
                     }
                 }
