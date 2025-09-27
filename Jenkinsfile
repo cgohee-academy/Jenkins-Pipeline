@@ -22,7 +22,6 @@ pipeline {
             steps {
                 script {
                     // FIX APPLIED: Using sh 'git clone' to bypass Jenkins Git plugin issues 
-                    // and guarantee the latest code (with the Dockerfile) is in the workspace root.
                     withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
                         sh """
                             # Clone into a temporary directory using the GITHUB_TOKEN for authentication
@@ -48,23 +47,15 @@ pipeline {
         stage('Build and Push Image') { 
             steps {
                 container('kaniko') {
+                    // FIX: Using triple quotes (sh """), and patching the Dockerfile with sed
                     sh """
-                        # --- FIX: PATCH DOCKERFILE FOR KANIKO ERROR ---
-                        # Deletes any line that starts with 'LABEL' but doesn't have a valid assignment 
-                        # (e.g., 'LABEL' or 'LABEL some-key').
-                        sed -i '/^\s*LABEL\s\+\([a-zA-Z0-9_-]\+\)\?\s*$/d' Dockerfile
+                        # --- PATCH DOCKERFILE FOR 'LABEL' ERROR ---
+                        # Safely remove any line that contains ONLY 'LABEL' (and optional surrounding whitespace).
+                        # This fixes the Kaniko 'LABEL must have two arguments' error without modifying the main repo.
+                        sed -i '/^\\s*LABEL\\s*$/d' Dockerfile
 
-                        # If the broken line is ONLY "LABEL" with nothing else, use the simpler version instead:
-                        # sed -i '/^\s*LABEL\s*$/d' Dockerfile
-                        
-                        # Command is now split across lines for readability inside the shell script block
-                        /kaniko/executor \\
-                          --dockerfile=Dockerfile \\
-                          --context=. \\
-                          --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} \\
-                          --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest \\
-                          --cache=true \\
-                          --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache
+                        # Run Kaniko executor command
+                        /kaniko/executor --dockerfile=Dockerfile --context=. --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG} --destination=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:latest --cache=true --cache-repo=${DOCKER_REGISTRY}/${DOCKER_USERNAME}/cache
                     """
                 }
             }
@@ -75,12 +66,6 @@ pipeline {
                 container('kubectl') {
                     sh """
                         # 1. Inject built image with tag into deployment before applying
-                        # Check if k8s folder exists before attempting to apply manifests
-                        if [ ! -d "k8s" ]; then
-                           echo "ERROR: 'k8s' directory not found. Deployment cannot proceed."
-                           exit 1
-                        fi
-                        
                         sed -i "s|image: todoapp:latest|image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}:${IMAGE_TAG}|g" k8s/todoapp-deployment.yaml
 
                         # 2. Apply all manifests
