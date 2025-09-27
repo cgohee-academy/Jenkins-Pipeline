@@ -21,7 +21,8 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX: Using sh 'git clone' to bypass Jenkins Git plugin issues and ensure latest code
+                    // FIX APPLIED: Using sh 'git clone' to bypass Jenkins Git plugin issues 
+                    // and guarantee the latest code (with the Dockerfile) is in the workspace root.
                     withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
                         sh """
                             # Clone into a temporary directory using the GITHUB_TOKEN for authentication
