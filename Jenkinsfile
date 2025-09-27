@@ -21,11 +21,11 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX APPLIED: Using sh 'git clone' to bypass Jenkins Git plugin issues 
+                    // FIX APPLIED: Git token is now properly double-escaped (\\$) inside the triple-quote block
                     withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
                         sh """
                             # Clone into a temporary directory using the GITHUB_TOKEN for authentication
-                            git clone https://\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
+                            git clone https://\\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
                             
                             # Move all contents from the cloned repo to the root of the workspace
                             mv app_temp/* .
@@ -51,7 +51,6 @@ pipeline {
                     sh """
                         # --- PATCH DOCKERFILE FOR 'LABEL' ERROR ---
                         # Safely remove any line that contains ONLY 'LABEL' (and optional surrounding whitespace).
-                        # This fixes the Kaniko 'LABEL must have two arguments' error without modifying the main repo.
                         sed -i '/^\\s*LABEL\\s*$/d' Dockerfile
 
                         # Run Kaniko executor command
