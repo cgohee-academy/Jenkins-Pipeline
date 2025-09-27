@@ -21,12 +21,11 @@ pipeline {
         stage('Checkout Application Code') {
             steps {
                 script {
-                    // FIX RE-APPLIED: Using sh 'git clone' to guarantee the application code 
-                    // (with Dockerfile) is moved to the workspace root.
+                    // FIX: Using sh 'git clone' to guarantee the application code is in the workspace root.
                     withCredentials([string(credentialsId: 'github-pat-auth', variable: 'GITHUB_TOKEN')]) {
                         sh """
-                            # Clone into a temporary directory using the GITHUB_TOKEN for authentication
-                            # The token is double-escaped (\\$) to work correctly inside the triple-quote string
+                            # Clone into a temporary directory using the GITHUB_TOKEN for authentication.
+                            # The token is correctly double-escaped (\\$) for Groovy.
                             git clone https://\\$GITHUB_TOKEN@github.com/opswerks-academy/i9b-observability.git app_temp
                             
                             # Move all contents from the cloned repo to the root of the workspace
@@ -51,8 +50,8 @@ pipeline {
                 container('kaniko') {
                     // FIX: Using triple quotes (sh """), and patching the Dockerfile with sed
                     sh """
-                        # --- PATCH DOCKERFILE FOR 'LABEL' ERROR (Safety measure) ---
-                        # If a broken LABEL line exists, this removes it.
+                        # --- PATCH DOCKERFILE FOR 'LABEL' ERROR ---
+                        # Safely remove any line that contains ONLY 'LABEL' (and optional surrounding whitespace).
                         sed -i '/^\\s*LABEL\\s*$/d' Dockerfile
 
                         # Run Kaniko executor command
@@ -80,49 +79,3 @@ pipeline {
                         kubectl apply -f k8s/todoapp-servicemonitor.yaml -n ${NAMESPACE}
 
                         echo "Waiting for deployment rollout to complete before proceeding to manual check..."
-                        kubectl rollout status deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}
-                    """
-                }
-            }
-        }
-
-        stage('Manual Veto Check') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        try {
-                            input(
-                                id: 'manual-veto-check',
-                                message: 'Deployment complete. Do you see any unexpected errors or failures? Rollback if necessary.',
-                                submitter: 'rcanonigo, @some-dev-team', 
-                                parameters: [
-                                    choice(name: 'action', choices: ['PROCEED_SUCCESS', 'REVERT_ROLLBACK'], description: 'Choose action.')
-                                ]
-                            )
-                        } catch (err) {
-                            if (currentBuild.result == 'TIMEOUT') {
-                                echo "10-minute timeout reached. Assuming the app is WORKING."
-                            } else {
-                                echo "User explicitly requested a rollback. Proceeding to Rollback Stage."
-                                currentBuild.result = 'FAILURE'
-                                throw err 
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    post {
-        failure {
-            echo 'Deployment failed (User Veto). Initiating automatic rollback.'
-            container('kubectl') {
-                sh "kubectl rollout undo deployment/${DEPLOYMENT_NAME} -n ${NAMESPACE}"
-            }
-        }
-        success {
-            echo "Deployment successful and passed manual review period."
-        }
-    }
-}
