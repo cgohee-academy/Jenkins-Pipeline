@@ -19,6 +19,10 @@ pipeline {
 
     stages {
         stage('Manual Veto Check') {
+            agent {
+                label 'none' 
+            }
+            
             steps {
                 script {
                     try {
