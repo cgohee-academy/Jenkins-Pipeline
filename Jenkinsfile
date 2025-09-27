@@ -28,9 +28,6 @@ pipeline {
                                 id: 'manual-veto-check',
                                 message: 'Deployment complete. Do you see any unexpected errors or failures? Rollback if necessary.',
                                 submitter: 'rcanonigo, @some-dev-team', 
-                                parameters: [
-                                    choice(name: 'action', choices: ['PROCEED_SUCCESS', 'REVERT_ROLLBACK'], description: 'Choose action.')
-                                ]
                             )
                         } catch (err) {
                             if (currentBuild.result == 'TIMEOUT') {
